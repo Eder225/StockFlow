@@ -1,0 +1,58 @@
+{
+  "name": "stockflow",
+  "version": "1.0.0",
+  "description": "Logiciel de gestion de stock pour boutiques d'accessoires électroniques et réparation de téléphones",
+  "license": "MIT",
+  "author": "Eder225",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eder225/StockFlow.git"
+  },
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^1.24.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.4",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.stockflow.app",
+    "productName": "StockFlow",
+    "asarUnpack": [
+      "dist/**"
+    ],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "src/assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

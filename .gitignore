@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-electron/
+release/
+*.log
+.DS_Store
+
+# Spécifications internes (gardées en local uniquement)
+/VOLUME *.md
+/Module *.md
+/NOTES_DE_TRAVAIL.md
