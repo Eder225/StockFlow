@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,13 +27,15 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^6.0.3",
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
     "vite": "^8.1.4",
     "vite-plugin-electron": "^1.1.0",
-    "vite-plugin-electron-renderer": "^1.0.0"
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "vitest": "^4.1.11"
   },
   "build": {
     "appId": "com.stockflow.app",

@@ -41,6 +41,11 @@ export class SqliteWrapper {
     this.dirty = true
   }
 
+  schedulePersist() {
+    this.markDirty()
+    if (this.inTransaction === 0) this.debouncedPersist()
+  }
+
   prepare(sql: string) {
     return new StatementWrapper(this, sql)
   }
@@ -161,8 +166,7 @@ class StatementWrapper {
       raw.run(this.sql)
     }
 
-    this.wrapper.markDirty()
-    if (this.wrapper.inTransaction === 0) this.wrapper.debouncedPersist()
+    this.wrapper.schedulePersist()
 
     let lastInsertRowid = 0
     const ridStmt = raw.prepare('SELECT last_insert_rowid() as id')
@@ -178,20 +182,72 @@ class StatementWrapper {
   }
 }
 
-export async function createSqliteWrapper(dbPath: string): Promise<SqliteWrapper> {
-  const SQL = await initSqlJs()
-  let db: SqlJsDatabase
+export interface SqliteOpenResult {
+  wrapper: SqliteWrapper
+  /** Set when an existing database file could not be read: the file has been renamed, not overwritten. */
+  corruption?: { renamedTo: string; error: string }
+}
 
-  try {
-    if (fs.existsSync(dbPath)) {
-      const buffer = fs.readFileSync(dbPath)
-      db = new SQL.Database(buffer)
-    } else {
-      db = new SQL.Database()
-    }
-  } catch {
-    db = new SQL.Database()
+function stamp(): string {
+  return new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15)
+}
+
+export async function createSqliteWrapper(dbPath: string): Promise<SqliteOpenResult> {
+  const SQL = await initSqlJs()
+
+  if (!fs.existsSync(dbPath)) {
+    return { wrapper: new SqliteWrapper(new SQL.Database(), dbPath) }
   }
 
-  return new SqliteWrapper(db, dbPath)
+  let db: SqlJsDatabase | null = null
+  let readError: string | null = null
+  try {
+    const buffer = fs.readFileSync(dbPath)
+    db = new SQL.Database(buffer)
+    // Construction can succeed on garbage bytes; force SQLite to parse the header.
+    db.exec('SELECT count(*) FROM sqlite_master')
+  } catch (e) {
+    readError = (e as Error).message || String(e)
+    try { db?.close() } catch { /* ignore */ }
+    db = null
+  }
+
+  if (!db) {
+    const renamedTo = `${dbPath}.corrupt-${stamp()}`
+    try {
+      fs.renameSync(dbPath, renamedTo)
+    } catch (e) {
+      // Renaming failed: keep the original untouched by pointing the new DB elsewhere.
+      const fallback = `${dbPath}.fresh-${stamp()}`
+      return {
+        wrapper: new SqliteWrapper(new SQL.Database(), fallback),
+        corruption: { renamedTo: fallback, error: `${readError} (rename failed: ${(e as Error).message})` },
+      }
+    }
+    return {
+      wrapper: new SqliteWrapper(new SQL.Database(), dbPath),
+      corruption: { renamedTo, error: readError || 'unknown' },
+    }
+  }
+
+  return { wrapper: new SqliteWrapper(db, dbPath) }
+}
+
+/**
+ * Reads the table list of a SQLite file without touching the live database.
+ * Returns null when the file cannot be read as SQLite.
+ */
+export async function readTableNames(dbPath: string): Promise<string[] | null> {
+  const SQL = await initSqlJs()
+  let db: SqlJsDatabase | null = null
+  try {
+    db = new SQL.Database(fs.readFileSync(dbPath))
+    const rows = db.exec("SELECT name FROM sqlite_master WHERE type = 'table'")
+    if (rows.length === 0) return []
+    return rows[0].values.map((v) => String(v[0]))
+  } catch {
+    return null
+  } finally {
+    try { db?.close() } catch { /* ignore */ }
+  }
 }

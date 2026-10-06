@@ -226,8 +226,8 @@ interface ElectronAPI {
     setup: (data: { shopName: string; password: string; secretQuestion: string; secretAnswer: string }) => Promise<{ success: boolean }>
     login: (data: { password: string }) => Promise<{ success: boolean; error?: string }>
     getSecretQuestion: () => Promise<{ success: boolean; question?: string; error?: string }>
-    verifySecretAnswer: (data: { answer: string }) => Promise<{ success: boolean; error?: string }>
-    resetPassword: (data: { newPassword: string }) => Promise<{ success: boolean }>
+    verifySecretAnswer: (data: { answer: string }) => Promise<{ success: boolean; error?: string; resetToken?: string }>
+    resetPassword: (data: { newPassword: string; token: string }) => Promise<{ success: boolean; error?: string }>
   }
   categories: {
     list: () => Promise<Category[]>

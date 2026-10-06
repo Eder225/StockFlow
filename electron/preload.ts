@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     login: (data: { password: string }) => ipcRenderer.invoke('auth:login', data),
     getSecretQuestion: () => ipcRenderer.invoke('auth:getSecretQuestion'),
     verifySecretAnswer: (data: { answer: string }) => ipcRenderer.invoke('auth:verifySecretAnswer', data),
-    resetPassword: (data: { newPassword: string }) => ipcRenderer.invoke('auth:resetPassword', data),
+    resetPassword: (data: { newPassword: string; token: string }) => ipcRenderer.invoke('auth:resetPassword', data),
   },
   categories: {
     list: () => ipcRenderer.invoke('categories:list'),

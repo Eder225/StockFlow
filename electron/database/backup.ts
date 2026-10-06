@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { getDb, initDatabase } from './db'
+import { readTableNames } from './sqlite-wrapper'
 
 let cachedDbPath: string | null = null
 
@@ -45,7 +46,7 @@ export function createBackup(triggerType: 'manual' | 'auto_close' | 'auto_hourly
 
     const time = now()
     const info = getDb().prepare(`INSERT INTO backups (file_path, trigger_type, created_at) VALUES (?, ?, ?)`)
-      .run(filePath, trigger_type, time)
+      .run(filePath, triggerType, time)
 
     getDb().prepare(`INSERT INTO history_log (operation_type, entity_type, entity_id, description, created_at)
       VALUES ('backup_created', 'backup', ?, ?, ?)`)
@@ -105,8 +106,30 @@ export async function restoreBackup(filePath: string): Promise<{ success: boolea
   try {
     if (!fs.existsSync(filePath)) return { success: false, error: 'Fichier de sauvegarde introuvable' }
 
-    const dbPath = getDbPath()
+    // The path comes from the renderer: only accept files inside the backup folder.
     const backupDir = getBackupFolder()
+    const resolvedFile = path.resolve(filePath)
+    const resolvedDir = path.resolve(backupDir)
+    const relative = path.relative(resolvedDir, resolvedFile)
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      return { success: false, error: 'Chemin de sauvegarde refusé : il doit se trouver dans le dossier de sauvegardes' }
+    }
+    if (!resolvedFile.endsWith('.db')) {
+      return { success: false, error: 'Ce fichier ne semble pas être une sauvegarde (.db)' }
+    }
+
+    // The file must open as SQLite and contain the expected tables.
+    const tables = await readTableNames(resolvedFile)
+    if (tables === null) {
+      return { success: false, error: 'Ce fichier n\'est pas une base SQLite valide' }
+    }
+    const required = ['users', 'products', 'sales', 'repairs', 'history_log']
+    const missing = required.filter((t) => !tables.includes(t))
+    if (missing.length > 0) {
+      return { success: false, error: `Sauvegarde invalide : table(s) manquante(s) : ${missing.join(', ')}` }
+    }
+
+    const dbPath = getDbPath()
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
 
     // Create safety backup of current state
@@ -122,8 +145,18 @@ export async function restoreBackup(filePath: string): Promise<{ success: boolea
     // Replace db file with backup
     fs.copyFileSync(filePath, dbPath)
 
-    // Reinitialize database connection
-    await initDatabase()
+    // Reinitialize database connection; roll back to the safety copy on failure
+    try {
+      await initDatabase()
+    } catch (e) {
+      try {
+        fs.copyFileSync(safetyPath, dbPath)
+        await initDatabase()
+      } catch {
+        /* the original error below is the useful one */
+      }
+      throw new Error(`Restauration impossible : ${(e as Error).message}`)
+    }
 
     // Log the restore in the restored DB
     const time = now()

@@ -1,0 +1,6 @@
+export { registerDashboardHandlers } from './dashboard'
+export { registerCatalogHandlers } from './catalog'
+export { registerSalesHandlers } from './sales'
+export { registerRepairsHandlers } from './repairs'
+export { registerSettingsHandlers } from './settings'
+export { registerReportsHandlers } from './reports'

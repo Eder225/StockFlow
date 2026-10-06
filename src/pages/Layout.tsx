@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Package, ShoppingCart, Wrench, History, BarChart3, Settings, Boxes } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingCart, Wrench, History, BarChart3, Settings, Boxes, LogOut } from 'lucide-react'
+import { markLoggedOut } from '../auth'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Tableau de bord', path: '/app' },
@@ -56,6 +57,9 @@ export default function Layout() {
       <div style={styles.mainArea}>
         <header style={styles.header}>
           <span style={styles.shopName}>{shopName}</span>
+          <button style={styles.logoutBtn} onClick={() => { markLoggedOut(); navigate('/') }}>
+            <LogOut size={16} /> Déconnexion
+          </button>
         </header>
 
         <main style={styles.content}>
@@ -75,7 +79,12 @@ const styles: Record<string, React.CSSProperties> = {
   navItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', background: 'transparent', borderRadius: 'var(--radius)', fontSize: 14, color: 'var(--color-gray-600)', fontWeight: 500, textAlign: 'left', width: '100%', transition: 'all 0.15s' },
   navItemActive: { background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontWeight: 600 },
   mainArea: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  header: { background: 'var(--color-white)', borderBottom: '1px solid var(--color-gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  header: { background: 'var(--color-white)', borderBottom: '1px solid var(--color-gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' },
   shopName: { fontSize: 55, fontWeight: 700, color: 'var(--color-gray-900)' },
+  logoutBtn: {
+    position: 'absolute', right: 16, display: 'flex', alignItems: 'center', gap: 6,
+    padding: '6px 12px', border: '1px solid var(--color-gray-300)', background: '#fff',
+    borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--color-gray-600)', cursor: 'pointer',
+  },
   content: { flex: 1, overflow: 'auto', padding: 24 },
 }

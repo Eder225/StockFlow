@@ -12,6 +12,26 @@ export default defineConfig({
         return html.replace(/\s+crossorigin(=["'][^"']*["'])?/g, '')
       },
     },
+    {
+      // Injected at build time only: an inline CSP would block the HMR client
+      // and the react-refresh preamble that Vite injects in dev.
+      name: 'inject-csp',
+      apply: 'build',
+      transformIndexHtml(html) {
+        const csp = [
+          "default-src 'self'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'none'",
+        ].join('; ')
+        return html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`)
+      },
+    },
     react(),
     electron([
       {

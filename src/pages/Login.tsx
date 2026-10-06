@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Store, Lock, Eye, EyeOff, HelpCircle, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { markAuthenticated } from '../auth'
 
 type Page = 'loading' | 'setup' | 'login' | 'forgot' | 'reset'
 
@@ -8,6 +9,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [page, setPage] = useState<Page>('loading')
   const [error, setError] = useState('')
+  const [resetToken, setResetToken] = useState('')
 
   useEffect(() => {
     window.electronAPI.auth.isFirstLaunch().then((first) => {
@@ -16,6 +18,7 @@ export default function Login() {
   }, [])
 
   function goToApp() {
+    markAuthenticated()
     navigate('/app')
   }
 
@@ -45,7 +48,7 @@ export default function Login() {
         {page === 'forgot' && (
           <ForgotForm
             onBack={() => { setPage('login'); setError('') }}
-            onReset={() => setPage('reset')}
+            onReset={(token) => { setResetToken(token); setPage('reset') }}
             onError={setError}
           />
         )}
@@ -53,6 +56,7 @@ export default function Login() {
           <ResetForm
             onBack={() => { setPage('login'); setError('') }}
             onError={setError}
+            resetToken={resetToken}
           />
         )}
       </div>
@@ -231,7 +235,7 @@ function LoginForm({ onSuccess, onForgot, onError }: { onSuccess: () => void; on
   )
 }
 
-function ForgotForm({ onBack, onReset, onError }: { onBack: () => void; onReset: () => void; onError: (msg: string) => void }) {
+function ForgotForm({ onBack, onReset, onError }: { onBack: () => void; onReset: (resetToken: string) => void; onError: (msg: string) => void }) {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [attempts, setAttempts] = useState(0)
@@ -274,8 +278,10 @@ function ForgotForm({ onBack, onReset, onError }: { onBack: () => void; onReset:
     const result = await window.electronAPI.auth.verifySecretAnswer({ answer: answer.trim() })
     setSubmitting(false)
 
-    if (result.success) {
-      onReset()
+    if (result.success && result.resetToken) {
+      onReset(result.resetToken)
+    } else if (result.success) {
+      onError('Session de réinitialisation invalide')
     } else {
       const newAttempts = attempts + 1
       setAttempts(newAttempts)
@@ -334,7 +340,7 @@ function ForgotForm({ onBack, onReset, onError }: { onBack: () => void; onReset:
   )
 }
 
-function ResetForm({ onBack, onError }: { onBack: () => void; onError: (msg: string) => void }) {
+function ResetForm({ onBack, onError, resetToken }: { onBack: () => void; onError: (msg: string) => void; resetToken: string }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -347,9 +353,10 @@ function ResetForm({ onBack, onError }: { onBack: () => void; onError: (msg: str
     if (password !== confirm) { onError('Les mots de passe ne correspondent pas'); return }
 
     setSubmitting(true)
-    await window.electronAPI.auth.resetPassword({ newPassword: password })
+    const result = await window.electronAPI.auth.resetPassword({ newPassword: password, token: resetToken })
     setSubmitting(false)
-    setDone(true)
+    if (result.success) setDone(true)
+    else onError(result.error || 'Échec de la réinitialisation')
   }
 
   if (done) {
